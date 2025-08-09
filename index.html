@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0e1116" />
+<link rel="manifest" href="manifest.webmanifest">
+<title>Wildfire</title>
+<style>
+  :root{--bg:#0e1116;--panel:#161a21;--muted:#9aa3af;--text:#f5f7fa;--accent:#ef4444;--amber:#f59e0b;--ok:#22c55e;}
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:var(--text);background:radial-gradient(1200px 1200px at 50% -10%,#1b2130,var(--bg))}
+  .wrap{max-width:860px;margin:0 auto;padding:env(safe-area-inset-top) 14px calc(18px + env(safe-area-inset-bottom));display:grid;gap:12px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .title{font-weight:900;letter-spacing:.3px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .chip{background:#1f2533;padding:8px 10px;border-radius:12px;display:flex;gap:6px;align-items:center}
+  .chip small{color:var(--muted)}
+  .btn{cursor:pointer;-webkit-tap-highlight-color:transparent;background:#232833;color:var(--text);border:1px solid #2e3543;padding:10px 12px;border-radius:10px;font-weight:700}
+  .btn.primary{background:linear-gradient(180deg,#ffa657,#ef4444);border-color:#b43434;color:#1b0e0e;box-shadow:0 8px 24px rgba(239,68,68,.35), inset 0 0 40px rgba(255,255,255,.1)}
+  .btn.good{background:linear-gradient(180deg,#fde68a,#f59e0b);border-color:#9a6b05;color:#201609}
+  .layout{display:grid;gap:12px}
+  @media(min-width:760px){.layout{grid-template-columns:1.2fr .8fr}}
+  .panel{background:var(--panel);border:1px solid #273140;border-radius:16px;padding:12px}
+  #grid{display:grid;gap:3px;touch-action:none}
+  .tile{aspect-ratio:1 / 1;border-radius:8px;border:1px solid #273140;position:relative;overflow:hidden}
+  .t-tree{background:linear-gradient(180deg,#0e3b1a 0%, #14522a 40%, #0e3b1a 100%);} 
+  .t-tree::after{content:''; position:absolute; left:50%; transform:translateX(-50%); bottom:6%; width:22%; height:28%; background:#6b3f1d; border-radius:3px; box-shadow:0 -20px 0 10px #1c6f3a, 0 -38px 0 18px #165b2f;}
+  .t-fire{background:radial-gradient(circle at 50% 40%, #ffd08a 0%, #ff7a18 40%, #ef4444 70%, #5b1d1d 100%); animation:flick 0.4s infinite alternate;}
+  @keyframes flick{ from{filter:brightness(1);} to{filter:brightness(1.2);} }
+  .t-burn{background:repeating-linear-gradient(45deg,#2b2b2b 0 6px,#262626 6px 12px);} 
+  .t-rock{background:#474b55}
+  .t-water{background:linear-gradient(180deg,#143a66,#0b2a4a)}
+  .hud{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .ugrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .ucard{background:#1c2230;border:1px solid #2a3342;border-radius:12px;padding:10px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .ucard h4{margin:0;font-size:14px}
+  .ucard p{margin:0;color:var(--muted);font-size:12px}
+  .badge{font-size:11px;color:#cbd5e1}
+  .toast{display:none;background:#1c2a1c;border:1px solid #2d4630;color:#baf7c1;padding:10px 12px;border-radius:12px;font-size:13px}
+  .footer{display:flex;gap:8px;flex-wrap:wrap}
+  .shop{margin-top:8px}
+  .shop h4{margin:0 0 6px 0}
+  .shop .line{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+  .dir{display:flex;gap:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="title">🔥 Wildfire</div>
+    <div class="row">
+      <button class="btn" id="exportBtn">Export</button>
+      <button class="btn" id="importBtn">Import</button>
+      <button class="btn" id="resetBtn">Reset</button>
+    </div>
+  </header>
+
+  <div class="row">
+    <div class="chip"><small>Points</small><b id="points">0</b></div>
+    <div class="chip"><small>Tokens</small><b id="tokens">0</b></div>
+    <div class="chip"><small>Level</small><b id="level">1 / 3</b></div>
+    <div class="chip"><small>Burned</small><b id="burned">0</b></div>
+    <div class="chip"><small>Spread</small><b id="spread">1</b></div>
+  </div>
+
+  <div class="layout">
+    <section class="panel">
+      <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="row"><b>Forest</b> <span class="badge" id="forestInfo"></span></div>
+        <div class="row">
+          <button class="btn primary" id="igniteBtn">Ignite (x<span id="ignites">1</span>)</button>
+          <div class="dir" id="windDir" style="display:none">
+            <button class="btn" data-dir="N">N</button>
+            <button class="btn" data-dir="E">E</button>
+            <button class="btn" data-dir="S">S</button>
+            <button class="btn" data-dir="W">W</button>
+          </div>
+        </div>
+      </div>
+      <div id="grid"></div>
+      <div class="hud">
+        <div class="toast" id="toast"></div>
+        <button class="btn good" id="nextBtn" style="display:none">Next Forest ▶</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <b>Upgrades</b>
+        <span class="badge">Spend points between forests</span>
+      </div>
+      <div class="ugrid" id="upgrades"></div>
+      <div class="shop">
+        <h4>Power-ups (Tokens)</h4>
+        <div class="line">
+          <div><b>Extra Wind</b> — 5s directional wind (x2 spread). <span class="badge">Cost: 2</span></div>
+          <button class="btn" id="buyWind">Buy</button>
+        </div>
+        <div class="line">
+          <div><b>Lightning Storm</b> — Start next forest with 2 extra ignitions. <span class="badge">Cost: 3</span></div>
+          <button class="btn" id="buyLightning">Buy</button>
+        </div>
+        <div class="row"><span class="badge">Inventory:</span>
+          <span class="chip"><small>Wind</small><b id="windInv">0</b></span>
+          <span class="chip"><small>Lightning</small><b id="lightInv">0</b></span>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <button class="btn" id="useWind">Use Wind</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="footer">
+    <span style="color:var(--muted);font-size:12px">Tip: Tap <b>Ignite</b> then a tree. Fire spreads automatically each tick. Use <b>Wind</b> during a level; <b>Lightning</b> applies at next start.</span>
+  </div>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(console.error);
+  });
+}
+</script>
+
+<script>
+(function(){
+  const C = { TREE:0, FIRE:1, BURN:2, ROCK:3, WATER:4 };
+  const fmt = n => n>=1000? (n/1000).toFixed(n>=100000?0:n>=10000?1:2)+'K' : Math.floor(n);
+  const $ = id => document.getElementById(id);
+  const els = { grid:$('#grid'), points:$('#points'), tokens:$('#tokens'), level:$('#level'), burned:$('#burned'), spread:$('#spread'), forestInfo:$('#forestInfo'), igniteBtn:$('#igniteBtn'), ignites:$('#ignites'), upgrades:$('#upgrades'), nextBtn:$('#nextBtn'), toast:$('#toast'), exportBtn:$('#exportBtn'), importBtn:$('#importBtn'), resetBtn:$('#resetBtn'), windInv:$('#windInv'), lightInv:$('#lightInv'), windDir:$('#windDir'), useWind:$('#useWind'), buyWind:$('#buyWind'), buyLightning:$('#buyLightning') };
+
+  const state = {
+    levelIndex:0,
+    points:0,
+    totalBurned:0,
+    igniteCharges:1,
+    spreadDelay:800,
+    range:1,
+    crossWater:false,
+    meltRocks:false,
+    grid:[],
+    W:10, H:10,
+    burningAges: new Map(),
+    playing:false,
+    selectingIgnite:false,
+    burnTime:15000,
+    tokens:0,
+    inv:{ wind:0, lightning:0 },
+    windActive:false,
+    windEnd:0,
+    windDir:null,
+  };
+
+  const levels = [
+    { size:10, rocks:0.04, water:0.00 },
+    { size:14, rocks:0.07, water:0.04 },
+    { size:18, rocks:0.10, water:0.08 },
+  ];
+
+  const upgradeList = [
+    { id:'spd1', name:'Spread Speed I', desc:'Fire spreads 20% faster', cost:10, apply:s=>{ s.spreadDelay = Math.max(120, Math.floor(s.spreadDelay*0.8)); } },
+    { id:'spd2', name:'Spread Speed II', desc:'Fire spreads 25% faster', cost:25, apply:s=>{ s.spreadDelay = Math.max(90, Math.floor(s.spreadDelay*0.75)); } },
+    { id:'rng1', name:'Diagonal Spread', desc:'Fire can spread diagonally', cost:20, apply:s=>{ s.range = 2; } },
+    { id:'ign1', name:'Extra Ignite', desc:'+1 ignite charge each forest', cost:15, apply:s=>{ s.igniteCharges++; } },
+    { id:'water', name:'Bridge Tactics', desc:'Fire can cross water (no points)', cost:40, apply:s=>{ s.crossWater = true; } },
+    { id:'rock', name:'Scorchstone', desc:'Rocks can be scorched (no points)', cost:40, apply:s=>{ s.meltRocks = true; } },
+  ];
+
+  function save(){ localStorage.setItem('wildfire-save-v2', JSON.stringify({
+    levelIndex:state.levelIndex, points:state.points, totalBurned:state.totalBurned,
+    igniteCharges:state.igniteCharges, spreadDelay:state.spreadDelay, range:state.range,
+    crossWater:state.crossWater, meltRocks:state.meltRocks, burnTime:state.burnTime,
+    tokens:state.tokens, inv:state.inv
+  })); }
+  function load(){ try{ const s = JSON.parse(localStorage.getItem('wildfire-save-v2')); if(s){ Object.assign(state, s); } }catch(e){} }
+  function toast(msg){ els.toast.textContent=msg; els.toast.style.display='block'; clearTimeout(els.toast._t); els.toast._t=setTimeout(()=>els.toast.style.display='none', 1800); }
+
+  function genForest(){
+    const lv = levels[state.levelIndex];
+    const n = lv.size; state.W = state.H = n; state.grid = new Array(n*n).fill(C.TREE);
+    for(let i=0;i<n*n;i++){
+      const r = Math.random();
+      if(r < lv.water){ state.grid[i] = C.WATER; }
+      else if(r < lv.water + lv.rocks){ state.grid[i] = C.ROCK; }
+      else { state.grid[i] = C.TREE; }
+    }
+    state.burningAges.clear();
+    state.playing = true;
+    state.selectingIgnite = false;
+    state.ignitesThisLevel = state.igniteCharges + (state.inv.lightning>0 ? 2 : 0);
+    if(state.inv.lightning>0){
+      let ignited = 0;
+      for(let tries=0; tries<500 && ignited<2; tries++){
+        const i = Math.floor(Math.random()*state.grid.length);
+        if(state.grid[i]===C.TREE){ state.grid[i]=C.FIRE; const x=i%state.W,y=Math.floor(i/state.W); state.burningAges.set(`${x},${y}`,0); ignited++; }
+      }
+      state.inv.lightning--;
+    }
+    updateHUD();
+    drawGrid();
+    scheduleTick();
+  }
+
+  function idx(x,y){ return y*state.W + x; }
+  function inb(x,y){ return x>=0 && y>=0 && x<state.W && y<state.H; }
+
+  function drawGrid(){
+    els.grid.style.gridTemplateColumns = `repeat(${state.W}, 1fr)`;
+    els.grid.innerHTML = '';
+    for(let y=0;y<state.H;y++){
+      for(let x=0;x<state.W;x++){
+        const t = state.grid[idx(x,y)];
+        const d = document.createElement('div');
+        d.className = 'tile ' + (t===C.TREE?'t-tree': t===C.FIRE?'t-fire': t===C.BURN?'t-burn': t===C.ROCK?'t-rock':'t-water');
+        d.dataset.x=x; d.dataset.y=y;
+        d.addEventListener('click', onTileTap, {passive:true});
+        els.grid.appendChild(d);
+      }
+    }
+    els.forestInfo.textContent = `${state.W}×${state.H}`;
+    updateShop();
+  }
+
+  function onTileTap(e){
+    if(!state.selectingIgnite) return;
+    const x = +e.currentTarget.dataset.x, y = +e.currentTarget.dataset.y;
+    const t = state.grid[idx(x,y)];
+    if(t!==C.TREE) { toast('Pick a tree'); return; }
+    ignite(x,y);
+  }
+
+  function ignite(x,y){
+    if(state.ignitesThisLevel<=0){ toast('No ignites left'); return; }
+    const i = idx(x,y);
+    if(state.grid[i]!==C.TREE) return;
+    state.grid[i]=C.FIRE; state.burningAges.set(`${x},${y}`, 0);
+    state.ignitesThisLevel--; updateHUD();
+    drawCell(x,y);
+  }
+
+  function drawCell(x,y){
+    const i = idx(x,y); const cell = els.grid.children[i];
+    const t = state.grid[i];
+    cell.className = 'tile ' + (t===C.TREE?'t-tree': t===C.FIRE?'t-fire': t===C.BURN?'t-burn': t===C.ROCK?'t-rock':'t-water');
+  }
+
+  function neighbors(x,y){
+    const dirs = state.range===1 ? [[1,0],[-1,0],[0,1],[0,-1]] : [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+    return dirs.map(([dx,dy])=>[x+dx,y+dy]).filter(([nx,ny])=>inb(nx,ny));
+  }
+
+  function windFactor(dx,dy){
+    if(!state.windActive) return 1;
+    switch(state.windDir){
+      case 'N': return dy==-1 ? 2 : 1;
+      case 'S': return dy==1 ? 2 : 1;
+      case 'E': return dx==1 ? 2 : 1;
+      case 'W': return dx==-1 ? 2 : 1;
+      default: return 1;
+    }
+  }
+
+  function spreadStep(dt){
+    const toBurned = [];
+    const toIgnite = [];
+    const burnTime = state.burnTime;
+
+    for(const [key,age] of state.burningAges){
+      const [x,y] = key.split(',').map(Number);
+      const newAge = age + dt; state.burningAges.set(key, newAge);
+      if(newAge >= burnTime){
+        toBurned.push([x,y]);
+      } else {
+        for(const [nx,ny] of neighbors(x,y)){
+          const t = state.grid[idx(nx,ny)];
+          const dx = nx-x, dy = ny-y;
+          if(t===C.TREE){
+            let chance = 0.35 * (dt/ state.spreadDelay * 1000) * windFactor(dx,dy);
+            if(Math.random() < Math.min(0.9, chance)){
+              toIgnite.push([nx,ny]);
+            }
+          } else if(t===C.WATER && state.crossWater){
+            const bx = nx + dx, by = ny + dy;
+            if(inb(bx,by) && state.grid[idx(bx,by)]===C.TREE){
+              let chance = 0.20 * (dt/ state.spreadDelay * 1000) * windFactor(dx,dy);
+              if(Math.random() < Math.min(0.9, chance)) toIgnite.push([bx,by]);
+            }
+          } else if(t===C.ROCK && state.meltRocks){
+            if(Math.random() < 0.10 * (dt/ state.spreadDelay * 1000)){
+              state.grid[idx(nx,ny)] = C.BURN; drawCell(nx,ny);
+            }
+          }
+        }
+      }
+    }
+
+    for(const [x,y] of toIgnite){
+      const i = idx(x,y);
+      if(state.grid[i]===C.TREE){ state.grid[i]=C.FIRE; state.burningAges.set(`${x},${y}`, 0); drawCell(x,y); }
+    }
+    for(const [x,y] of toBurned){
+      const i = idx(x,y);
+      if(state.grid[i]===C.FIRE){ state.grid[i]=C.BURN; state.burningAges.delete(`${x},${y}`); state.points += 1; state.totalBurned += 1; drawCell(x,y); }
+    }
+
+    if(state.windActive && performance.now() >= state.windEnd){
+      state.windActive = false; state.windDir=null; els.windDir.style.display='none'; toast('Wind ended');
+    }
+
+    if(!state.burningAges.size && !state.grid.some(t=>t===C.TREE)){
+      endLevel();
+    }
+  }
+
+  function endLevel(){
+    state.playing=false; save(); updateHUD();
+    state.tokens += 1;
+    toast('Forest cleared! +1 token.');
+    els.nextBtn.style.display = 'inline-block';
+    updateShop();
+  }
+
+  let tickHandle=null, lastTick=0;
+  function scheduleTick(){
+    if(tickHandle) clearInterval(tickHandle);
+    lastTick = performance.now();
+    tickHandle = setInterval(()=>{
+      const now = performance.now(); const dt = now - lastTick; lastTick = now;
+      spreadStep(dt);
+      updateHUD();
+    }, state.spreadDelay);
+  }
+
+  function updateHUD(){
+    els.points.textContent = fmt(state.points);
+    els.tokens.textContent = fmt(state.tokens);
+    els.level.textContent = `${state.levelIndex+1} / ${levels.length}`;
+    els.burned.textContent = fmt(state.totalBurned);
+    els.spread.textContent = (1000/state.spreadDelay).toFixed(2) + '/s';
+    els.ignites.textContent = state.ignitesThisLevel ?? state.igniteCharges;
+    els.windInv.textContent = state.inv.wind;
+    els.lightInv.textContent = state.inv.lightning;
+  }
+
+  function renderUpgrades(){
+    els.upgrades.innerHTML='';
+    upgradeList.forEach(u=>{
+      const card = document.createElement('div'); card.className='ucard';
+      const meta = document.createElement('div'); meta.innerHTML = `<h4>${u.name}</h4><p>${u.desc}</p>`;
+      const btn = document.createElement('button'); btn.className='btn'+(state.points>=u.cost?' good':''); btn.textContent = `${u.cost} pts`;
+      btn.addEventListener('click',()=>{
+        if(state.points>=u.cost){ state.points-=u.cost; u.apply(state); save(); updateHUD(); renderUpgrades(); scheduleTick(); toast(u.name+' purchased'); }
+        else toast('Not enough points');
+      });
+      card.append(meta, btn); els.upgrades.append(card);
+    });
+  }
+
+  function updateShop(){
+    els.windInv.textContent = state.inv.wind;
+    els.lightInv.textContent = state.inv.lightning;
+    els.tokens.textContent = fmt(state.tokens);
+  }
+
+  els.igniteBtn.addEventListener('click',()=>{ if(!state.playing){ toast('Start next forest'); return; } state.selectingIgnite = true; toast('Tap a tree to ignite'); });
+  els.nextBtn.addEventListener('click',()=>{
+    if(state.levelIndex < levels.length-1){ state.levelIndex++; genForest(); save(); renderUpgrades(); els.nextBtn.style.display='none'; }
+    else { toast('You beat all current forests!'); }
+  });
+
+  els.resetBtn.addEventListener('click',()=>{ if(confirm('Reset all progress?')){ localStorage.removeItem('wildfire-save-v2'); location.reload(); }});
+  els.exportBtn.addEventListener('click',()=>{ const data=btoa(unescape(encodeURIComponent(localStorage.getItem('wildfire-save-v2')||''))); navigator.clipboard.writeText(data).then(()=>toast('Save copied')); });
+  els.importBtn.addEventListener('click',()=>{ const data=prompt('Paste your save data:'); if(!data) return; try{ const json=decodeURIComponent(escape(atob(data))); localStorage.setItem('wildfire-save-v2',json); location.reload(); }catch(e){ alert('Invalid save'); }});
+
+  els.buyWind.addEventListener('click',()=>{ if(state.tokens>=2){ state.tokens-=2; state.inv.wind++; save(); updateShop(); toast('Bought Wind'); } else toast('Need more tokens'); });
+  els.buyLightning.addEventListener('click',()=>{ if(state.tokens>=3){ state.tokens-=3; state.inv.lightning++; save(); updateShop(); toast('Bought Lightning'); } else toast('Need more tokens'); });
+
+  els.useWind.addEventListener('click',()=>{
+    if(!state.playing){ toast('Use during a forest'); return; }
+    if(state.inv.wind<=0){ toast('No Wind power-up'); return; }
+    state.inv.wind--; state.windActive=true; state.windEnd = performance.now()+5000; els.windDir.style.display='flex'; toast('Choose wind direction');
+    ['N','E','S','W'].forEach(dir=>{
+      const btn=document.querySelector(`[data-dir="${dir}"]`);
+      btn.onclick=()=>{ state.windDir=dir; els.windDir.style.display='none'; toast('Wind '+dir+' active'); };
+    });
+    updateShop(); save();
+  });
+
+  load();
+  genForest();
+  renderUpgrades();
+})();
+</script>
+</body>
+</html>
